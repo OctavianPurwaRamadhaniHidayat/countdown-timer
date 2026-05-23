@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Countdown Timer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --border: rgba(255,255,255,0.08);
+      --text: #f0f0f0;
+      --muted: #777;
+      --accent: #c8a96e;
+      --danger: #e05555;
+      --success: #4caf7d;
+      --radius: 16px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Subtle grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 380px;
+      padding: 1.5rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      position: relative;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header svg { width: 22px; height: 22px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+    .header h1 { font-size: 17px; font-weight: 500; letter-spacing: 0.02em; }
+
+    /* ── SETUP VIEW ── */
+    .setup { width: 100%; display: flex; flex-direction: column; gap: 14px; }
+
+    .field-label {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .row-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .row-inputs-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .input-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .input-wrap span {
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .input-wrap input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 22px;
+      font-weight: 500;
+      text-align: center;
+      padding: 10px 4px;
+      outline: none;
+      transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+    .input-wrap input::-webkit-inner-spin-button,
+    .input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .input-wrap input:focus { border-color: var(--accent); }
+
+    .btn-start {
+      width: 100%;
+      padding: 15px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: var(--accent);
+      color: #0f0f0f;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      margin-top: 4px;
+    }
+    .btn-start:hover { opacity: 0.88; }
+    .btn-start:active { transform: scale(0.98); }
+
+    /* ── RUN VIEW ── */
+    .run-view { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+
+    .clock-wrap {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .clock-svg { transform: rotate(-90deg); position: absolute; inset: 0; }
+    .ring-bg { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 6; }
+    .ring-fg {
+      fill: none;
+      stroke: var(--success);
+      stroke-width: 6;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1), stroke 0.4s;
+    }
+    .ring-fg.warning { stroke: var(--danger); }
+
+    .clock-inner { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .clock-time {
+      font-family: 'DM Mono', monospace;
+      font-size: 52px;
+      font-weight: 500;
+      letter-spacing: -2px;
+      color: var(--text);
+      transition: color 0.3s;
+      line-height: 1;
+    }
+    .clock-time.warning { color: var(--danger); }
+    .clock-label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .status-text {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.02em;
+      min-height: 18px;
+    }
+
+    /* Bell dots */
+    .bell-section { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .bell-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .bell-row { display: flex; gap: 10px; }
+    .bell-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      transition: background 0.05s, transform 0.05s, box-shadow 0.05s;
+    }
+    .bell-dot.flash {
+      background: var(--accent);
+      transform: scale(1.5);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .btn-stop {
+      width: 100%;
+      padding: 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-stop:hover { background: rgba(224,85,85,0.1); }
+
+    .btn-reset {
+      font-size: 13px;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-reset:hover { color: var(--text); }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+    <h1>Countdown Timer</h1>
+  </div>
+
+  <!-- SETUP -->
+  <div class="setup" id="setupView">
+    <div>
+      <p class="field-label">Durasi waktu</p>
+      <div class="row-inputs">
+        <div class="input-wrap">
+          <input type="number" id="inpHour" min="0" max="23" value="0" inputmode="numeric">
+          <span>Jam</span>
+        </div>
+        <div class="input-wrap">
+          <input type="number" id="inpMin" min="0" max="59" value="1" inputmode="numeric">
+          <span>Menit</span>
+        </div>
+        <div class="input-wrap">
+          <input type="number" id="inpSec" min="0" max="59" value="0" inputmode="numeric">
+          <span>Detik</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="field-label">Bel peringatan sebelum selesai</p>
+      <div class="row-inputs-2">
+        <div class="input-wrap">
+          <input type="number" id="inpWarn" min="3" max="60" value="5" inputmode="numeric">
+          <span>Detik</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn-start" onclick="startTimer()">▶ Mulai</button>
+  </div>
+
+  <!-- RUNNING -->
+  <div class="run-view hidden" id="runView">
+    <div class="clock-wrap">
+      <svg class="clock-svg" width="220" height="220" viewBox="0 0 220 220">
+        <circle class="ring-bg" cx="110" cy="110" r="96"/>
+        <circle class="ring-fg" id="ringFg" cx="110" cy="110" r="96"/>
+      </svg>
+      <div class="clock-inner">
+        <div class="clock-time" id="clockDisplay">00:00</div>
+        <div class="clock-label" id="clockLabel">berjalan</div>
+      </div>
+    </div>
+
+    <p class="status-text" id="statusText">Bersiap...</p>
+
+    <div class="bell-section">
+      <span class="bell-label">bel</span>
+      <div class="bell-row" id="bellDots">
+        <div class="bell-dot"></div>
+        <div class="bell-dot"></div>
+        <div class="bell-dot"></div>
+        <div class="bell-dot"></div>
+        <div class="bell-dot"></div>
+      </div>
+    </div>
+
+    <button class="btn-stop" onclick="stopTimer()">■ Berhenti</button>
+    <button class="btn-reset" onclick="resetTimer()">↩ Reset</button>
+  </div>
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────────────────
+  let timerInterval = null;
+  let totalSeconds = 0;
+  let remaining = 0;
+  let warnSeconds = 5;
+  let audioCtx = null;
+  let phase = 'idle';
+
+  // ── Ring setup ────────────────────────────────────────────────────────────
+  const R = 96;
+  const CIRC = 2 * Math.PI * R;
+  const ringEl = document.getElementById('ringFg');
+  ringEl.style.strokeDasharray = CIRC;
+  ringEl.style.strokeDashoffset = 0;
+
+  // ── Audio: TENG bell ──────────────────────────────────────────────────────
+  function getCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function playTeng(vol = 1.0) {
+    const ctx = getCtx();
+    const t = ctx.currentTime;
+    // Inharmonic partials of a real bell
+    [
+      { f: 220,  a: 1.0,  d: 3.2 },
+      { f: 440,  a: 0.55, d: 2.4 },
+      { f: 606,  a: 0.38, d: 1.9 },
+      { f: 880,  a: 0.22, d: 1.3 },
+      { f: 1100, a: 0.12, d: 0.8 },
+    ].forEach(({ f, a, d }) => {
+      const osc = ctx.createOscillator();
+      const g   = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(a * vol, t + 0.005); // hard attack
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      osc.start(t); osc.stop(t + d + 0.1);
+    });
+    // Thump transient — impact punch
+    const buf  = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++)
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.008));
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const gt = ctx.createGain();
+    gt.gain.setValueAtTime(0.7 * vol, t);
+    gt.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    src.connect(gt); gt.connect(ctx.destination);
+    src.start(t);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function flashDot(i) {
+    const dots = document.getElementById('bellDots').querySelectorAll('.bell-dot');
+    if (i < dots.length) {
+      dots[i].classList.add('flash');
+      setTimeout(() => dots[i].classList.remove('flash'), 450);
+    }
+  }
+  function clearDots() {
+    document.getElementById('bellDots').querySelectorAll('.bell-dot').forEach(d => d.classList.remove('flash'));
+  }
+  function formatTime(s) {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0)
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+  function updateRing() {
+    const pct = totalSeconds > 0 ? remaining / totalSeconds : 0;
+    ringEl.style.strokeDashoffset = CIRC * (1 - pct);
+    const warn = phase === 'countdown-end';
+    ringEl.classList.toggle('warning', warn);
+    document.getElementById('clockDisplay').classList.toggle('warning', warn);
+  }
+
+  // ── Timer logic ───────────────────────────────────────────────────────────
+  function startTimer() {
+    const h = parseInt(document.getElementById('inpHour').value) || 0;
+    const m = parseInt(document.getElementById('inpMin').value)  || 0;
+    const s = parseInt(document.getElementById('inpSec').value)  || 0;
+    totalSeconds = h * 3600 + m * 60 + s;
+    warnSeconds  = parseInt(document.getElementById('inpWarn').value) || 5;
+    if (totalSeconds <= 0) return;
+
+    remaining = totalSeconds;
+    phase = 'countdown-start';
+
+    document.getElementById('setupView').classList.add('hidden');
+    document.getElementById('runView').classList.remove('hidden');
+    clearDots();
+    document.getElementById('clockDisplay').textContent = formatTime(remaining);
+    document.getElementById('clockLabel').textContent = 'bersiap';
+    updateRing();
+    runStartBells(warnSeconds);
+  }
+
+  function runStartBells(total) {
+    let count = 0;
+    function ring() {
+      if (count >= total) {
+        phase = 'running';
+        document.getElementById('statusText').textContent = 'Berjalan...';
+        document.getElementById('clockLabel').textContent = 'berjalan';
+        timerInterval = setInterval(tick, 1000);
+        return;
+      }
+      playTeng(1.0);
+      flashDot(count);
+      const left = total - count - 1;
+      document.getElementById('statusText').textContent =
+        left > 0 ? `Mulai dalam ${left}...` : 'Mulai!';
+      count++;
+      setTimeout(ring, 1000);
+    }
+    document.getElementById('statusText').textContent = `Mulai dalam ${total}...`;
+    ring();
+  }
+
+  function tick() {
+    remaining--;
+    document.getElementById('clockDisplay').textContent = formatTime(remaining);
+    updateRing();
+
+    if (remaining === warnSeconds) {
+      phase = 'countdown-end';
+      clearDots();
+      document.getElementById('clockLabel').textContent = 'hampir selesai';
+    }
+
+    if (phase === 'countdown-end' && remaining > 0) {
+      const idx = warnSeconds - remaining;
+      playTeng(1.0);
+      flashDot(idx);
+      document.getElementById('statusText').textContent = `Selesai dalam ${remaining}...`;
+    }
+
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      phase = 'done';
+      playTeng(1.3);
+      flashDot(warnSeconds - 1);
+      document.getElementById('clockDisplay').textContent = '00:00';
+      document.getElementById('clockLabel').textContent = 'selesai';
+      document.getElementById('statusText').textContent = '✓ Waktu habis!';
+    }
+  }
+
+  function stopTimer() {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    phase = 'idle';
+    document.getElementById('statusText').textContent = 'Dihentikan.';
+    document.getElementById('clockLabel').textContent = 'berhenti';
+  }
+
+  function resetTimer() {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    phase = 'idle';
+    document.getElementById('runView').classList.add('hidden');
+    document.getElementById('setupView').classList.remove('hidden');
+    clearDots();
+  }
+</script>
+</body>
+</html>
